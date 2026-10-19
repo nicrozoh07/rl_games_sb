@@ -30,6 +30,7 @@ packages = ["src/rl_games_sb"]
 [dependency-groups]
 dev = [
     "ipykernel>=7.4.0",
+    "pytest>=9.1.1",
 ]
 
 # CUDA build of PyTorch on Linux/Windows (PyPI's Windows wheel is CPU-only).

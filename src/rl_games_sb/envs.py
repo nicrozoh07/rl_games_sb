@@ -3,6 +3,7 @@
 Contents:
   - DEFAULT_ENV_ID  : the env used when none is given
   - TRADING_ENV_IDS : the gym-anytrading envs
+  - INVESTOR_ENV_ID : the investor agent's env (investor.py), on the train period
   - FireOnNewLife   : wrapper that presses FIRE at the start of each life
   - make()          : create a Gymnasium environment, with Atari preprocessing
                       for "ALE/..." ids
@@ -19,6 +20,10 @@ gym.register_envs(gym_anytrading)
 
 DEFAULT_ENV_ID = "LunarLander-v3"
 TRADING_ENV_IDS = ("stocks-v0", "forex-v0")
+
+# Other periods: gym.make(INVESTOR_ENV_ID, period="valid").
+INVESTOR_ENV_ID = "investor-v0"
+gym.register(INVESTOR_ENV_ID, entry_point="rl_games_sb.investor:InvestorEnv")
 
 
 class FireOnNewLife(gym.Wrapper):
