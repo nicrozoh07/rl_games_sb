@@ -1,0 +1,29 @@
+# DQN investor agent, first reward: the portfolio's daily log return, net of costs.
+#   rlgames-sb train --config configs/investor_dqn.yaml
+#
+# Trains on the train period (2009-2014). The final evaluation is one episode,
+# because the env is deterministic: every episode replays the same prices. Its
+# reward is log(final value / initial value). notebooks/investor_reward.ipynb
+# trains this config with several seeds and evaluates it on the valid period.
+
+experiment: investor
+env: investor-v0
+algo: dqn
+timesteps: 300_000            # ~220 passes over the 1,363 training days
+eval_episodes: 1
+
+hyperparams:
+  learning_rate: 1.0e-4
+  buffer_size: 100_000
+  learning_starts: 5_000
+  batch_size: 64
+  gamma: 0.99                 # rewards ~100 days ahead still count
+  train_freq: 4
+  gradient_steps: 1
+  target_update_interval: 1_000
+  exploration_fraction: 0.3
+  exploration_final_eps: 0.02
+  policy_kwargs:
+    net_arch: [64, 64]
+  # MLP policies are faster on the CPU; the GPU pays off for CNNs (Atari).
+  device: cpu

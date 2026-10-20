@@ -19,7 +19,8 @@ Timing of one step, from day t to day t+1 (P = closing price):
     decide    a target position, at the close of day t
     trade     at P[t], paying COST_BPS on the value bought or sold
     market    the asset returns P[t+1] / P[t] - 1, which the agent has not seen
-    reward    log(value after the move / value before the trade)
+    reward    log(value after the move / value before the trade), minus an
+              optional trade penalty (see InvestorEnv)
 
 An episode starts in cash and ends at the last day of its period, whose next
 close belongs to the following period and is never used.
@@ -85,11 +86,21 @@ class InvestorEnv(gym.Env):
 
     The episode ends with truncated=True, not terminated: the market does not
     end there, the data does, so SB3 still bootstraps the last value.
+
+    `trade_penalty_bps` is subtracted from the reward per unit of position
+    changed, on top of the real cost. It only shapes learning: the portfolio
+    value, and so every financial metric, pays the real cost alone.
     """
 
     metadata: ClassVar[dict] = {"render_modes": []}
 
-    def __init__(self, period: str = "train", cost_bps: float = COST_BPS, render_mode: str | None = None):
+    def __init__(
+        self,
+        period: str = "train",
+        cost_bps: float = COST_BPS,
+        trade_penalty_bps: float = 0.0,
+        render_mode: str | None = None,
+    ):
         close = load()["close"]
         feats = features.compute(close)
         scaler = features.Scaler.fit(split(feats, "train"))
@@ -98,6 +109,7 @@ class InvestorEnv(gym.Env):
         self.observations = scaler.transform(split(feats, period)).to_numpy(np.float32)
         self.prices = close.loc[self.dates].to_numpy()
         self.cost = cost_bps / 10_000
+        self.trade_penalty = trade_penalty_bps / 10_000
 
         self.action_space = spaces.Discrete(len(POSITIONS))
         self.observation_space = spaces.Box(
@@ -115,14 +127,15 @@ class InvestorEnv(gym.Env):
         target = POSITIONS[action]
 
         # At the close of day t: trade from the current position to the target.
-        cost = self.cost * abs(target - self.position) * self.value
+        traded = abs(target - self.position)
+        cost = self.cost * traded * self.value
         invested = self.value - cost
 
         # From the close of t to the close of t+1: only the asset share moves.
         asset_return = self.prices[self.t + 1] / self.prices[self.t] - 1
         new_value = invested * (1 + target * asset_return)
 
-        reward = float(np.log(new_value / self.value))
+        reward = float(np.log(new_value / self.value)) - self.trade_penalty * traded
         self.position = target * (1 + asset_return) / (1 + target * asset_return)
         self.value = new_value
         self.t += 1

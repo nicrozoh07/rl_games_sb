@@ -22,8 +22,16 @@ DEFAULT_ENV_ID = "LunarLander-v3"
 TRADING_ENV_IDS = ("stocks-v0", "forex-v0")
 
 # Other periods: gym.make(INVESTOR_ENV_ID, period="valid").
+# investor-v0 rewards the log return net of costs; investor-penalized-v0 also
+# penalizes each change of position (notebooks/investor_reward.ipynb explains
+# the change and how the penalty was chosen).
 INVESTOR_ENV_ID = "investor-v0"
 gym.register(INVESTOR_ENV_ID, entry_point="rl_games_sb.investor:InvestorEnv")
+gym.register(
+    "investor-penalized-v0",
+    entry_point="rl_games_sb.investor:InvestorEnv",
+    kwargs={"trade_penalty_bps": 400},
+)
 
 
 class FireOnNewLife(gym.Wrapper):
