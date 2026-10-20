@@ -1,0 +1,77 @@
+{
+  "description": "Final investor agent, frozen before the test period is used (part 12). notebooks/investor_protocol.ipynb checks these hashes before any test evaluation.",
+  "frozen_at_commit": "aade48c",
+  "algo": "dqn",
+  "config": {
+    "path": "configs/investor_dqn_penalized.yaml",
+    "sha256_lf": "db0501d560d533822de7a513e6c51fa667bf6e51b11b44ea0d718885a07b2ab4",
+    "note": "sha256 of the text with LF line endings, so a CRLF checkout gives the same hash"
+  },
+  "env": "investor-penalized-v0",
+  "env_kwargs": {
+    "trade_penalty_bps": 400
+  },
+  "cost_bps": 10.0,
+  "features": [
+    "ret_1",
+    "ret_20",
+    "gap_sma50",
+    "vol_20",
+    "rsi_14"
+  ],
+  "splits": {
+    "train": [
+      "2009-05-22",
+      "2014-12-31"
+    ],
+    "valid": [
+      "2015-01-01",
+      "2015-12-31"
+    ],
+    "test": [
+      "2016-01-01",
+      "2018-08-29"
+    ]
+  },
+  "trained_on": "train",
+  "seeds": [
+    0,
+    1,
+    2
+  ],
+  "models": {
+    "0": {
+      "path": "saves/dqn_investor-pen400_seed0.zip",
+      "sha256": "df32ef6366ebfa0b92fe770866348e0b5329f0760b56fdacd4cce1018a12b4a6"
+    },
+    "1": {
+      "path": "saves/dqn_investor-pen400_seed1.zip",
+      "sha256": "b860fb470a3ea6fcb10fa6131ce03bb6a1a3eb4a45f2b878eb649c62c621301d"
+    },
+    "2": {
+      "path": "saves/dqn_investor-pen400_seed2.zip",
+      "sha256": "2e1f19575ed494e144c156f4d3efa1475969b81684ed23ddf9b4454b7ecd82da"
+    }
+  },
+  "evaluation": {
+    "period": "test",
+    "policy": "greedy (deterministic=True)",
+    "report": "every seed, their mean and the worst seed; no seed is selected",
+    "baselines": [
+      "buy_and_hold",
+      "random_policy, seeds 0-199",
+      "always cash",
+      "always 50%"
+    ],
+    "metrics": [
+      "total_return",
+      "annual_return",
+      "volatility",
+      "sharpe",
+      "max_drawdown",
+      "trades",
+      "costs",
+      "exposure"
+    ]
+  }
+}
