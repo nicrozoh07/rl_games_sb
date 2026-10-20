@@ -23,6 +23,7 @@ dependencies = [
 
 [project.scripts]
 rlgames-sb = "rl_games_sb.cli:main"
+investor = "rl_games_sb.investor_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/rl_games_sb"]

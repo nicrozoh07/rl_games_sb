@@ -3,6 +3,7 @@
 Contents:
   - FINAL_PATH        : the frozen final agent (part 12)
   - AGENT, BUY_AND_HOLD, RANDOM : strategy names, as they appear in the report
+  - weights_sha256()  : hash of a model's network weights
   - load_final_agent(): the frozen models, after checking their hashes
   - compare()         : daily rows of every strategy on one period
   - per_run()         : one row of metrics per run
@@ -37,14 +38,29 @@ RANDOM = "Aleatorio"
 AGGREGATE = {AGENT: "mean", BUY_AND_HOLD: "mean", RANDOM: "median"}
 
 
+def weights_sha256(model: DQN) -> str:
+    """SHA-256 of the network weights (online and target Q-networks).
+
+    The .zip file's own hash is no use: it stores timestamps and system info,
+    so saving the same weights twice gives two different files.
+    """
+    digest = hashlib.sha256()
+    state = model.policy.state_dict()
+    for name in sorted(state):
+        digest.update(name.encode())
+        digest.update(state[name].detach().cpu().contiguous().numpy().tobytes())
+    return digest.hexdigest()
+
+
 def load_final_agent() -> tuple[dict[int, DQN], str]:
-    """The frozen models by seed and their env id. Raises if a model file changed."""
+    """The frozen models by seed and their env id. Raises if a model's weights changed."""
     final = json.loads(FINAL_PATH.read_text(encoding="utf-8"))
     models = {}
     for seed, entry in final["models"].items():
-        if hashlib.sha256(Path(entry["path"]).read_bytes()).hexdigest() != entry["sha256"]:
+        model = DQN.load(entry["path"], device="cpu")
+        if weights_sha256(model) != entry["weights_sha256"]:
             raise ValueError(f"{entry['path']} is not the model frozen in {FINAL_PATH}")
-        models[int(seed)] = DQN.load(entry["path"], device="cpu")
+        models[int(seed)] = model
     return models, final["env"]
 
 

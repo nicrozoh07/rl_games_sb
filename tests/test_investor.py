@@ -1,4 +1,8 @@
-"""The data split, and the env's accounting and lookahead safety."""
+"""The dataset, the data split, and the env's accounting and lookahead safety."""
+import hashlib
+from pathlib import Path
+
+import gym_anytrading.datasets
 import numpy as np
 import pytest
 from gymnasium.utils.env_checker import check_env
@@ -6,6 +10,13 @@ from gymnasium.utils.env_checker import check_env
 from rl_games_sb import investor
 
 COST = investor.COST_BPS / 10_000
+
+
+def test_dataset_is_the_documented_one():
+    """The SHA-256 in data/README.md: any change to the data fails here."""
+    csv = Path(gym_anytrading.datasets.__file__).parent / "data" / "STOCKS_GOOGL.csv"
+    digest = hashlib.sha256(csv.read_bytes()).hexdigest()
+    assert digest == "1a3d459fdbcddb9362a157b07438b0fd83e6eb04406a136b5b0a10c5b0df107a"
 
 
 def test_load_columns():

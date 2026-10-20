@@ -3,17 +3,37 @@ import json
 
 import pandas as pd
 import pytest
+from stable_baselines3 import DQN
 
-from rl_games_sb import evaluation
+from rl_games_sb import evaluation, registry
+
+
+def save_small_model(path, seed=0):
+    model = registry.create("dqn", "investor-v0", seed=seed, device="cpu", policy_kwargs={"net_arch": [8]})
+    model.save(path)
+    return model
+
+
+def test_weights_hash_survives_a_new_save(tmp_path):
+    """The .zip changes on every save; the weights hash must not."""
+    model = save_small_model(tmp_path / "a.zip")
+    model.save(tmp_path / "b.zip")
+    loaded = [DQN.load(tmp_path / name, device="cpu") for name in ("a.zip", "b.zip")]
+
+    assert evaluation.weights_sha256(loaded[0]) == evaluation.weights_sha256(loaded[1])
+    assert evaluation.weights_sha256(loaded[0]) != evaluation.weights_sha256(save_small_model(tmp_path / "c.zip", seed=1))
 
 
 def test_a_changed_model_is_refused(tmp_path, monkeypatch):
-    model = tmp_path / "model.zip"
-    model.write_bytes(b"retrained after seeing the test period")
+    path = tmp_path / "model.zip"
+    frozen = evaluation.weights_sha256(save_small_model(path))
     manifest = tmp_path / "final.json"
-    manifest.write_text(json.dumps({"env": "investor-v0", "models": {"0": {"path": str(model), "sha256": "0" * 64}}}))
+    entry = {"path": str(path), "weights_sha256": frozen}
+    manifest.write_text(json.dumps({"env": "investor-v0", "models": {"0": entry}}))
     monkeypatch.setattr(evaluation, "FINAL_PATH", manifest)
+    assert list(evaluation.load_final_agent()[0]) == [0]
 
+    save_small_model(path, seed=1)  # "retrained" after the freeze
     with pytest.raises(ValueError, match="not the model frozen"):
         evaluation.load_final_agent()
 

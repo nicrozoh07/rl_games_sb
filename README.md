@@ -1,3 +1,152 @@
+# Agente inversor con DQN (proyecto final de Aprendizaje por Refuerzo)
+
+Un agente de Reinforcement Learning decide cada día qué fracción de un capital
+de $100.000 invertir en la acción de Alphabet (GOOGL): 0 %, 50 % o 100 %. Paga
+10 bps por cada operación y se compara con comprar y mantener y con un agente
+aleatorio en un período que no vio al entrenar.
+
+Este repositorio es un fork de
+[`emiliomunozai/rl_games_sb`](https://github.com/emiliomunozai/rl_games_sb): el
+proyecto reutiliza su DQN (Stable-Baselines3), sus configuraciones y su
+seguimiento con MLflow. La documentación original sigue más abajo.
+
+## Estructura
+
+| Estructura sugerida por la actividad | En este repositorio |
+|---|---|
+| `data/` | [`data/README.md`](data/README.md): el dataset, su versión y su SHA-256 |
+| `src/environment.py` | [`investor.py`](src/rl_games_sb/investor.py): datos, división temporal, acciones y el entorno `InvestorEnv`; [`features.py`](src/rl_games_sb/features.py): los indicadores del estado |
+| `src/agent.py` | DQN de Stable-Baselines3, creado por [`registry.py`](src/rl_games_sb/registry.py) con [`configs/investor_dqn_penalized.yaml`](configs/investor_dqn_penalized.yaml) |
+| `src/train.py` | [`investor_cli.py`](src/rl_games_sb/investor_cli.py): `uv run investor train` |
+| `src/evaluate.py` | [`evaluation.py`](src/rl_games_sb/evaluation.py): `uv run investor evaluate` |
+| `src/baselines.py` | [`backtest.py`](src/rl_games_sb/backtest.py) (`buy_and_hold`, `random_policy` y las métricas): `uv run investor baselines` |
+| `notebooks/eda.ipynb` | [`notebooks/investor_eda.ipynb`](notebooks/investor_eda.ipynb) y los demás notebooks (ver abajo) |
+| `configs/` | `investor_dqn.yaml` (recompensa v0), `investor_dqn_penalized.yaml` (v1, agente final), `investor_final.json` (agente congelado) |
+
+## Instalación
+
+Requiere [uv](https://docs.astral.sh/uv/). uv instala Python 3.11 y las
+versiones exactas de `uv.lock`:
+
+```bash
+uv sync
+```
+
+PyTorch se instala con soporte CUDA, pero el agente se entrena en CPU: su red
+es pequeña y en CPU el resultado es reproducible bit a bit.
+
+## Dataset
+
+`STOCKS_GOOGL` del paquete `gym-anytrading` 2.0.0: precios diarios de GOOGL
+del 2009-05-22 al 2018-08-29, 2.335 filas. No hay que descargar nada, porque
+viene con `uv sync`. Origen, SHA-256 y división temporal en
+[`data/README.md`](data/README.md).
+
+| Período | Fechas | Uso |
+|---|---|---|
+| train | 2009-05-22 → 2014-12-31 | entrenar |
+| valid | 2015-01-01 → 2015-12-31 | comparar recompensas y elegir la penalización |
+| test | 2016-01-01 → 2018-08-29 | evaluación final, una sola vez |
+
+## Entrenar
+
+```bash
+uv run investor train
+```
+
+Entrena el agente final, DQN con la recompensa v1 (log-retorno neto de costos
+menos 400 bps por unidad de posición cambiada), con las semillas 0, 1 y 2.
+Toma unos 2–3 minutos por semilla en CPU y guarda
+`saves/dqn_investor-pen400_seed{0,1,2}.zip`. Si un modelo ya existe lo salta
+(`--force` lo sobrescribe). Opciones:
+
+- `--reward v0`: la primera recompensa, solo log-retorno
+  (`saves/dqn_investor-v0_seed*.zip`).
+- `--seeds 0 1 2`: qué semillas entrenar.
+- `--out carpeta`: guardar en otra carpeta.
+
+`notebooks/investor_reward.ipynb` entrena además todas las variantes de la
+iteración de la recompensa (18 modelos, ~40 minutos) y las deja en `saves/`.
+
+## Evaluar
+
+```bash
+uv run investor evaluate --period valid
+```
+
+Compara el agente final (cada semilla y su media) con comprar y mantener y con
+200 agentes aleatorios, con las mismas condiciones: $100.000 iniciales en
+efectivo, 10 bps por operación y ejecución al cierre. Antes de evaluar
+comprueba que los pesos de los modelos son los congelados en
+`configs/investor_final.json`.
+
+`--period test` es la evaluación final sobre el período held-out. Según el
+protocolo (`notebooks/investor_protocol.ipynb`) se ejecuta una sola vez y,
+después, no se cambia nada del agente.
+
+## Baselines
+
+```bash
+uv run investor baselines --period valid
+```
+
+Comprar y mantener, siempre en efectivo, siempre 50 % y el agente aleatorio
+con las semillas 0 a 199 (percentiles 5, 50 y 95).
+
+## Semillas y reproducibilidad
+
+- **DQN:** semillas 0, 1 y 2. Se pasan a Stable-Baselines3, que fija las
+  semillas de Python, NumPy y PyTorch.
+- **Agente aleatorio:** semillas 0 a 199.
+- **Entorno:** determinista; los precios no cambian entre episodios.
+- **Versiones:** fijadas en `uv.lock`.
+
+Para comprobar que el entrenamiento reproduce el agente congelado, se entrena
+en otra carpeta y se comparan los pesos:
+
+```bash
+uv run investor train --seeds 0 --out saves/reproduccion
+```
+
+```bash
+uv run investor check --dir saves/reproduccion
+```
+
+En esta máquina (CPU, Windows) el resultado es `has the frozen weights`: la
+misma semilla da exactamente la misma red. En otra máquina pueden aparecer
+diferencias mínimas de punto flotante (distintas CPU usan instrucciones
+distintas), y en GPU el entrenamiento no es determinista. El hash se calcula
+sobre los pesos y no sobre el archivo `.zip`, que cambia en cada guardado aunque
+los pesos sean iguales.
+
+## Notebooks, en orden
+
+| Notebook | Parte | Contenido |
+|---|---|---|
+| [`investor_eda.ipynb`](notebooks/investor_eda.ipynb) | 7 | Análisis exploratorio |
+| [`investor_reward.ipynb`](notebooks/investor_reward.ipynb) | 9 | Iteración de la recompensa (entrena los modelos) |
+| [`investor_algorithm.ipynb`](notebooks/investor_algorithm.ipynb) | 10 | DQN: red, hiperparámetros, exploración, semillas |
+| [`investor_baselines.ipynb`](notebooks/investor_baselines.ipynb) | 11 | Baselines en train y validación |
+| [`investor_protocol.ipynb`](notebooks/investor_protocol.ipynb) | 12 | Protocolo y agente congelado |
+| [`investor_metrics.ipynb`](notebooks/investor_metrics.ipynb) | 13 | Métricas y ensayo del reporte |
+| [`investor_results.ipynb`](notebooks/investor_results.ipynb) | 14 | Resultados en test |
+
+Para abrirlos: `uv run --with jupyter jupyter lab`. Se ejecutan desde la raíz
+del repositorio, y los notebooks 10 a 14 necesitan los modelos de `saves/`.
+
+## Pruebas
+
+```bash
+uv run pytest
+```
+
+Verifican que los indicadores y el entorno no usan información del futuro, la
+contabilidad del entorno (costos, deriva de la posición, comprar y mantener),
+la división temporal, el SHA-256 del dataset, las métricas con los ejemplos de
+la actividad y que un modelo modificado no pase la verificación.
+
+---
+
 # RL Games (Stable-Baselines3)
 
 The twin of [`rl_games`](https://github.com/emiliomunozai/rl_games), with the

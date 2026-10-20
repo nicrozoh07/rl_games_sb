@@ -1,5 +1,5 @@
 {
-  "description": "Final investor agent, frozen before the test period is used (part 12). notebooks/investor_protocol.ipynb checks these hashes before any test evaluation.",
+  "description": "Final investor agent, frozen before the test period is used (part 12). evaluation.load_final_agent() refuses any model whose weights_sha256 differs. file_sha256 records the original .zip files; it changes on every save, even with identical weights, so it is not what gets checked.",
   "frozen_at_commit": "aade48c",
   "algo": "dqn",
   "config": {
@@ -42,15 +42,18 @@
   "models": {
     "0": {
       "path": "saves/dqn_investor-pen400_seed0.zip",
-      "sha256": "df32ef6366ebfa0b92fe770866348e0b5329f0760b56fdacd4cce1018a12b4a6"
+      "weights_sha256": "20237eecb8b02517c9decb8c2ba51f37d0b5e6d1c84b7ad93ac9ebad24b529dc",
+      "file_sha256": "df32ef6366ebfa0b92fe770866348e0b5329f0760b56fdacd4cce1018a12b4a6"
     },
     "1": {
       "path": "saves/dqn_investor-pen400_seed1.zip",
-      "sha256": "b860fb470a3ea6fcb10fa6131ce03bb6a1a3eb4a45f2b878eb649c62c621301d"
+      "weights_sha256": "1d453838231a73e3ed02cdb87a782359015daf24612b2dcbea161659a4cafc73",
+      "file_sha256": "b860fb470a3ea6fcb10fa6131ce03bb6a1a3eb4a45f2b878eb649c62c621301d"
     },
     "2": {
       "path": "saves/dqn_investor-pen400_seed2.zip",
-      "sha256": "2e1f19575ed494e144c156f4d3efa1475969b81684ed23ddf9b4454b7ecd82da"
+      "weights_sha256": "130fc73f3323ff0909d9f09420982d8d09a43876684070d75688412de9f5c9f7",
+      "file_sha256": "2e1f19575ed494e144c156f4d3efa1475969b81684ed23ddf9b4454b7ecd82da"
     }
   },
   "evaluation": {
