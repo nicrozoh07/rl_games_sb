@@ -14,7 +14,7 @@ def test_rows_cover_every_day_of_the_period():
 
 
 def test_buy_and_hold_metrics():
-    days = backtest.run(lambda obs: 2, "test")
+    days = backtest.run(backtest.buy_and_hold, "test")
     m = backtest.metrics(days)
     prices = investor.InvestorEnv(period="test").prices
 
@@ -31,3 +31,15 @@ def test_cash_metrics():
     assert m["max_drawdown"] == 0
     assert m["trades"] == 0
     assert m["exposure"] == 0
+
+
+def test_random_policy_is_reproducible_and_uses_every_action():
+    first = backtest.run(backtest.random_policy(0), "valid")
+    again = backtest.run(backtest.random_policy(0), "valid")
+    other = backtest.run(backtest.random_policy(1), "valid")
+
+    assert first["action"].equals(again["action"])
+    assert not first["action"].equals(other["action"])
+    shares = first["action"].value_counts(normalize=True)
+    assert set(shares.index) == {0, 1, 2}
+    assert shares.between(0.25, 0.42).all()  # ~1/3 each over 251 days

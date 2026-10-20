@@ -1,12 +1,15 @@
 """Play a policy over one period of the investor env and measure the result.
 
 Contents:
-  - run()     : one episode, one row per trading day
-  - metrics() : return, risk and trading statistics of an episode
+  - run()           : one episode, one row per trading day
+  - metrics()       : return, risk and trading statistics of an episode
+  - buy_and_hold()  : baseline, 100% from the first close to the last
+  - random_policy() : baseline, a uniformly random action every day
 
 A policy is any function from an observation to an action, e.g.
-`lambda obs: model.predict(obs, deterministic=True)[0]` for an SB3 model, or
-`lambda obs: 2` for "always 100%".
+`lambda obs: model.predict(obs, deterministic=True)[0]` for an SB3 model.
+Baselines run through the same env as the agent, so they start in cash on the
+same day and pay the same transaction cost.
 """
 from __future__ import annotations
 
@@ -68,3 +71,14 @@ def metrics(days: pd.DataFrame) -> dict[str, float]:
         "costs": days["cost"].sum(),
         "exposure": held.mean(),
     }
+
+
+def buy_and_hold(obs: np.ndarray) -> int:
+    """Invest everything at the first close (paying the cost once) and never trade again."""
+    return investor.POSITIONS.index(1.0)
+
+
+def random_policy(seed: int) -> Callable[[np.ndarray], int]:
+    """A uniformly random action every day, the same sequence for the same seed."""
+    rng = np.random.default_rng(seed)
+    return lambda obs: int(rng.integers(len(investor.POSITIONS)))
